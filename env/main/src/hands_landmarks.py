@@ -1,24 +1,3 @@
-# import cv2
-# import mediapipe as mp
-
-# mp_hands = mp.solutions.hands
-# mp_draw = mp.solutions.drawing_utils
-# hands = mp_hands.Hands(min_detection_confidence=0.5, min_tracking_confidence=0.5)
-
-# cap = cv2.VideoCapture(0)
-# while True:
-#     ret, frame = cap.read()
-#     if not ret: break
-#     rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-#     result = hands.process(rgb)
-#     if result.multi_hand_landmarks:
-#         for handLms in result.multi_hand_landmarks:
-#             mp_draw.draw_landmarks(frame, handLms, mp_hands.HAND_CONNECTIONS)
-#     cv2.imshow('Hands', frame)
-#     if cv2.waitKey(1) & 0xFF == ord('q'):
-#         break
-# cap.release()
-# cv2.destroyAllWindows() 
 import cv2
 import mediapipe as mp
 
@@ -33,41 +12,42 @@ hands = mp_hands.Hands(static_image_mode=False,
 # Start webcam
 cap = cv2.VideoCapture(0)
 
-print("Press SPACE to print 63 landmark values (x, y, z). Press 'q' to quit.")
+print("Press SPACE to print 63 landmark values (x, y, z). Press Q to quit.")
 
-while True:
-    ret, frame = cap.read()
-    if not ret:
-        break
+while cap.isOpened():
+    success, frame = cap.read()
+    if not success:
+        print("Ignoring empty frame.")
+        continue
 
-    # Flip the frame for natural interaction
+    # Flip and convert color
     frame = cv2.flip(frame, 1)
-    rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+    rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
-    result = hands.process(rgb)
+    # Process with MediaPipe
+    results = hands.process(rgb_frame)
 
-    if result.multi_hand_landmarks:
-        for handLms in result.multi_hand_landmarks:
-            mp_draw.draw_landmarks(frame, handLms, mp_hands.HAND_CONNECTIONS)
+    if results.multi_hand_landmarks:
+        for hand_landmarks in results.multi_hand_landmarks:
+            mp_draw.draw_landmarks(frame, hand_landmarks, mp_hands.HAND_CONNECTIONS)
 
-            # Check for spacebar to print landmarks
-            key = cv2.waitKey(1) & 0xFF
-            if key == ord(' '):
-                coords = []
-                for lm in handLms.landmark:
-                    coords.extend([lm.x, lm.y, lm.z])
-                print(f"\nLandmark coordinates ({len(coords)} values):")
-                print(coords)
+    # Show the frame
+    cv2.imshow('Hand Landmarks', frame)
 
-    else:
-        key = cv2.waitKey(1) & 0xFF  # even if no hand is detected
-        if key == ord(' '):
-            print("\nNo hand detected. Try again.")
-
-    cv2.imshow("Hand Landmarks", frame)
-
-    if cv2.waitKey(1) & 0xFF == ord('q'):
+    key = cv2.waitKey(1)
+    if key == ord('q') or key == ord('Q'):
+        print("Quitting...")
         break
+    elif key == 32:  # SPACE pressed
+        if results.multi_hand_landmarks:
+            hand = results.multi_hand_landmarks[0]
+            coords = []
+            for lm in hand.landmark:
+                coords.extend([lm.x, lm.y, lm.z])
+            print(f"\nLandmark coordinates ({len(coords)} values):")
+            print(coords)
+        else:
+            print("No hand detected. Try again.")
 
 cap.release()
 cv2.destroyAllWindows()
